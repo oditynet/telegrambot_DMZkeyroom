@@ -3,6 +3,7 @@ import telebot
 from telebot.types import ReplyKeyboardMarkup, KeyboardButton
 status="4"
 status_id="None"
+status_user="None"
 bot = telebot.TeleBot('TOKEN');
 
 keys = ["0","1","2","3","4","5","/help"]
@@ -32,7 +33,10 @@ status- показать статус
 def echo_message(message):
     global status
     global status_id
-    status_id=message.from_user.first_name
+    global status_user
+    #status_id=message.from_user.first_name
+    #linked_user = '[@'+status_id+'](tg://user?id='+str(message.from_user.id)+')'    
+    #f'{linked_user}'
     #print(f"id={message.from_user.id} user={message.from_user.first_name} status={status}")
     if message.text == "close keyboard":
         markup = telebot.types.ReplyKeyboardRemove()
@@ -42,48 +46,61 @@ def echo_message(message):
     elif message.text == "status":
         if status == 0:
             tmp_str=str(f"Ключ на ресепшене")
-            bot.send_message(message.chat.id, tmp_str)
+            #bot.send_message(message.chat.id, tmp_str)
         if status == 1:
-            tmp_str=str(f"Ключ у {status_id} в офисе")
-            bot.send_message(message.chat.id, tmp_str)
+            tmp_str=str(f"Ключ у {status_user} в офисе")
+            bot.send_message(message.chat.id, f'{tmp_str}',parse_mode='MarkdownV2',disable_web_page_preview=True)
         if status == 2:
-            tmp_str=str(f"Ключ у {status_id} в ДЗ")
-            bot.send_message(message.chat.id, tmp_str)
+            tmp_str=str(f"Ключ у {status_user} в ДЗ")
+            bot.send_message(message.chat.id, f'{tmp_str}',parse_mode='MarkdownV2',disable_web_page_preview=True)
+            #bot.send_message(message.chat.id, tmp_str)
         if status == 3:
             tmp_str=str(f"ДЗ закрыт на ключ и СКУД")
-            bot.send_message(message.chat.id, tmp_str)
+            #bot.send_message(message.chat.id, tmp_str)
         if status == 4:
             tmp_str=str(f"ДЗ закрыт на ключ, без СКУД")
-            bot.send_message(message.chat.id, tmp_str)
+            #bot.send_message(message.chat.id, tmp_str)
         if status == 5:
             tmp_str=str(f"ДЗ открыт")
-            bot.send_message(message.chat.id, tmp_str)
+            #bot.send_message(message.chat.id, tmp_str)
         #elif status == 4:
             #bot.send_message(message.chat.id,message.text)
             #bot.reply_to(message, "взял ключ, снял с охраны, открыл ДЗ, нахожусь в ДЗ")
     elif message.text == "0":
         msg = bot.reply_to(message, "Ключ на ресепшене")
         status=0
+        status_id=message.from_user.first_name
+        linked_user = '[@'+status_id+'](tg://user?id='+str(message.from_user.id)+')'
         #bot.reply_to(message, status)
         #bot.register_next_step_handler(msg, show_status)
     elif message.text == "1":
         msg = bot.reply_to(message, "Ключ у меня в офисе")
+        status_id=message.from_user.first_name
+        status_user = '[@'+status_id+'](tg://user?id='+str(message.from_user.id)+')'
         status=1
         #bot.register_next_step_handler(msg, show_status)
     elif message.text == "2":
         msg = bot.reply_to(message, "Ключ у меня в ДЗ")
+        status_id=message.from_user.first_name
+        status_user = '[@'+status_id+'](tg://user?id='+str(message.from_user.id)+')'
         status=2
         #bot.register_next_step_handler(msg, show_status)
     elif message.text == "3":
         msg = bot.reply_to(message, "ДЗ закрыт на ключ и СКУД")
+        status_id=message.from_user.first_name
+        status_user = '[@'+status_id+'](tg://user?id='+str(message.from_user.id)+')'
         status=3
         #bot.register_next_step_handler(msg, show_status)
     elif message.text == "4":
         msg = bot.reply_to(message, "ДЗ закрыт на ключ, без СКУД")
+        status_id=message.from_user.first_name
+        status_user = '[@'+status_id+'](tg://user?id='+str(message.from_user.id)+')'
         status=4
         #bot.register_next_step_handler(msg, show_status)
     elif message.text == "5":
         msg = bot.reply_to(message, "ДЗ открыт")
+        status_id=message.from_user.first_name
+        status_user = '[@'+status_id+'](tg://user?id='+str(message.from_user.id)+')'
         status=5
         #bot.register_next_step_handler(msg, show_status)
         #msg = bot.reply_to(message, status)
