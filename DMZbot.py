@@ -29,7 +29,7 @@ def send_welcome(message):
 @bot.message_handler(func=lambda message: True)
 def echo_message(message):
     global status
-    print(f"id={message.from_user.id} user={message.from_user.first_name} status={status}")
+    
     if message.text == "✅close keyboard":
         markup = telebot.types.ReplyKeyboardRemove()
         bot.send_message(message.from_user.id,"Done with Keyboard",reply_markup=markup)
@@ -79,5 +79,6 @@ def echo_message(message):
         #msg = bot.reply_to(message, status)
     else:
         msg = bot.reply_to(message, "Неверный статус")
+    print(f"id={message.from_user.id} user={message.from_user.first_name} status={status}")
         
 bot.polling(none_stop=True, interval=0)
