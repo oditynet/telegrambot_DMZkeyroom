@@ -1,5 +1,6 @@
-#version 0.4.1 by odity
+#version 0.4.2 by odity
 import telebot
+import configparser
 from telebot import types,util
 
 from telebot.types import ReplyKeyboardMarkup, KeyboardButton
@@ -7,7 +8,16 @@ status=99
 status_id="None"
 status_user="None"
 user_key=""
-bot = telebot.TeleBot('TOKEN');
+bot = telebot.TeleBot('');
+
+conf = configparser.ConfigParser()
+conf.read('/root/telegrambot_DMZkeyroom/dmzbot.conf')
+status=int(conf.get("bot","status"))
+if status == 1 or status == 2:
+    status_user=conf.get("bot", "first_name")
+if status == 6:
+    user_key=conf.get("bot","username")
+
 #telebot.logger.setLevel(7)
 keys = ["0","1","2","3","4","5","6","/help"]
 
@@ -58,6 +68,7 @@ def echo_message(message):
     elif message.text == "/start" or message.text == "/help":
         bot.register_next_step_handler(message.text, send_welcome(message.text))
     elif message.text == "status":
+        status=int(conf.get("bot","status"))
         if status == 0:
             tmp_str=str(f"Ключ на ресепшене")
             bot.send_message(message.chat.id, tmp_str)
@@ -86,6 +97,9 @@ def echo_message(message):
     elif message.text == "0":
         msg = bot.reply_to(message, "Ключ на ресепшене")
         status=0
+        conf.set("bot", "status", "0")
+        with open("/root/telegrambot_DMZkeyroom/dmzbot.conf", "w") as config:
+            conf.write(config)
         status_id=message.from_user.first_name
         linked_user = '[@'+status_id+'](tg://user?id='+str(message.from_user.id)+')'
         #bot.reply_to(message, status)
@@ -96,6 +110,11 @@ def echo_message(message):
         status_id=message.from_user.first_name
         status_user = '[@'+status_id+'](tg://user?id='+str(message.from_user.id)+')'
         status=1
+        conf.set("bot", "status", "1")
+        conf.set("bot", "first_name", message.from_user.first_name)
+        #conf.set("bot", "user_id", message.from_user.id)
+        with open("/root/telegrambot_DMZkeyroom/dmzbot.conf", "w") as config:
+            conf.write(config)
         user_key=""
         #bot.register_next_step_handler(msg, show_status)
     elif message.text == "2":
@@ -103,33 +122,49 @@ def echo_message(message):
         status_id=message.from_user.first_name
         status_user = '[@'+status_id+'](tg://user?id='+str(message.from_user.id)+')'
         status=2
+        
+        conf.set("bot", "status", "2")
+        conf.set("bot", "first_name", message.from_user.first_name)
+        #conf.set("bot", "user_id", message.from_user.id)
+        with open("/root/telegrambot_DMZkeyroom/dmzbot.conf", "w") as config:
+            conf.write(config)
+        
         user_key=""
         #bot.register_next_step_handler(msg, show_status)
     elif message.text == "3":
         msg = bot.reply_to(message, "ДЗ закрыт на ключ и СКУД")
-        status_id=message.from_user.first_name
-        status_user = '[@'+status_id+'](tg://user?id='+str(message.from_user.id)+')'
+        #status_id=message.from_user.first_name
+        #status_user = '[@'+status_id+'](tg://user?id='+str(message.from_user.id)+')'
         status=3
+        conf.set("bot", "status", "3")
+        with open("/root/telegrambot_DMZkeyroom/dmzbot.conf", "w") as config:
+            conf.write(config)
         user_key=""
         #bot.register_next_step_handler(msg, show_status)
     elif message.text == "4":
         msg = bot.reply_to(message, "ДЗ закрыт на ключ, без СКУД")
-        status_id=message.from_user.first_name
-        status_user = '[@'+status_id+'](tg://user?id='+str(message.from_user.id)+')'
+        #status_id=message.from_user.first_name
+        #status_user = '[@'+status_id+'](tg://user?id='+str(message.from_user.id)+')'
         status=4
+        conf.set("bot", "status", "4")
+        with open("/root/telegrambot_DMZkeyroom/dmzbot.conf", "w") as config:
+            conf.write(config)
         user_key=""
         #bot.register_next_step_handler(msg, show_status)
     elif message.text == "5":
         msg = bot.reply_to(message, "ДЗ открыт")
-        status_id=message.from_user.first_name
-        status_user = '[@'+status_id+'](tg://user?id='+str(message.from_user.id)+')'
+        #status_id=message.from_user.first_name
+        #status_user = '[@'+status_id+'](tg://user?id='+str(message.from_user.id)+')'
         status=5
+        conf.set("bot", "status", "5")
+        with open("/root/telegrambot_DMZkeyroom/dmzbot.conf", "w") as config:
+            conf.write(config)
         #bot.register_next_step_handler(msg, show_status)
         #msg = bot.reply_to(message, status)
         user_key=""
     elif message.text == "6":
         status=6
-      #  bot.send_message(message.chat.id, 'Кому вы передали ключ?')
+        bot.send_message(message.chat.id, 'Кому вы передали ключ?')
         bot.register_next_step_handler(message, enter_user)
         #msg = bot.reply_to(message, "Ключ передал "+str(user_key))
 
@@ -148,12 +183,17 @@ def echo_message(message):
 def enter_user(message):
     #print(f" status={status}: {message.text}")
     if status == 6:
-      bot.send_message(message.chat.id, 'Кому вы передали ключ?')  
       global user_key
       user_key=message.text 
       if len(message.text) < 2 or message.text == "status" or message.text == "/help":
+          bot.send_message(message.chat.id, 'Кому вы передали ключ?')
           bot.register_next_step_handler(message, enter_user)
       else:
+          conf.set("bot", "status", "6")
+          conf.set("bot", "username", user_key)
+          with open("/root/telegrambot_DMZkeyroom/dmzbot.conf", "w") as config:
+            conf.write(config)
           bot.send_message(message.chat.id, 'Запомнил.')
         
-bot.polling(none_stop=True, interval=0)
+#bot.polling(none_stop=True, interval=0)
+bot.infinity_polling(timeout=10, long_polling_timeout = 5)
