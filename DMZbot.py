@@ -1,9 +1,9 @@
-#version 0.4 by odity
+#version 0.4.1 by odity
 import telebot
 from telebot import types,util
 
 from telebot.types import ReplyKeyboardMarkup, KeyboardButton
-status="4"
+status=99
 status_id="None"
 status_user="None"
 user_key=""
@@ -79,6 +79,9 @@ def echo_message(message):
             bot.send_message(message.chat.id, tmp_str)
         if status == 6:
             tmp_str=str(f"Ключ передал {user_key}")
+            bot.send_message(message.chat.id, tmp_str)
+        if status == 99:
+            tmp_str=str(f"Ooops...Reset status")
             bot.send_message(message.chat.id, tmp_str)
     elif message.text == "0":
         msg = bot.reply_to(message, "Ключ на ресепшене")
