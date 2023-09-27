@@ -1,0 +1,9 @@
+[Unit]
+Description=Python bot for DMZ
+[Service]
+# Command to execute when the service is started
+ExecStart=/usr/bin/python /home/odity/bin/DMZbot.py
+Environment=PYTHONUNBUFFERED=1
+Restart=on-failure
+[Install]
+WantedBy=default.target
