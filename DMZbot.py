@@ -1,199 +1,236 @@
-#version 0.4.2 by odity
+#version: 0.6
+#owner: odity
 import telebot
-import configparser
+#import configparser
 from telebot import types,util
-
+#from telebot.types import InlineKeyboardButton, InlineKeyboardMarkup,Update
 from telebot.types import ReplyKeyboardMarkup, KeyboardButton
-status=99
-status_id="None"
-status_user="None"
-user_key=""
-bot = telebot.TeleBot('');
+import sqlite3
 
-conf = configparser.ConfigParser()
-conf.read('/root/telegrambot_DMZkeyroom/dmzbot.conf')
-status=int(conf.get("bot","status"))
-if status == 1 or status == 2:
-    status_user=conf.get("bot", "first_name")
-if status == 6:
-    user_key=conf.get("bot","username")
+connection = sqlite3.connect('dmzbase.db',check_same_thread=False)
+dbuser = connection.cursor()
+dbuser.execute('''
+CREATE TABLE IF NOT EXISTS dmzusers (
+id_telegramuser TEXT PRIMARY KEY, 
+username TEXT,
+realname TEXT,               
+telephone TEXT,
+status INTEGER
+)
+''')
+
+registration_stat=0
+status=99
+usertelegram_id=""
+user_telephone=""
+usertelegram_link=""
+username_current=""
+usernamereal_current=""
+
+bot = telebot.TeleBot('TOKEN');
+res = dbuser.execute('SELECT * FROM dmzusers WHERE id_telegramuser=?',('dmzbot',))
+res = res.fetchone()
+if res is None:
+    dbuser.execute('INSERT INTO dmzusers (id_telegramuser, username, realname ,telephone, status) VALUES (?, ?, ?, ?, ?)', ('dmzbot', '','','', 0))
+else:
+    status=res[4]
+    if  status == 1 or status == 2 or status == 3:
+        usertelegram_id   = res[0]
+        username_current  = res[1]
+        usernamereal_current  = res[2]
+        usertelegram_link = '['+usernamereal_current+'](tg://user?id='+str(usertelegram_id)+')'
+        print(usertelegram_link)
+        user_telephone = res[3]
+
 
 #telebot.logger.setLevel(7)
-keys = ["0","1","2","3","4","5","6","/help"]
+keys = ["0","1","2","3"]
 
+def register_markup_finish():
+    markup = ReplyKeyboardMarkup(row_width=1, resize_keyboard=True)
+    markup.add(KeyboardButton("Да"),KeyboardButton("Нет"))
+    return markup  
 def keyboard():
-    markup = ReplyKeyboardMarkup(row_width=4)
+    markup = ReplyKeyboardMarkup(row_width=4, resize_keyboard=True )
     row = [KeyboardButton(x) for x in keys[:10]]
     markup.add(*row)
-    markup.add(KeyboardButton("status"))
-    markup.add(KeyboardButton("close keyboard"))
-
+    markup.add(KeyboardButton("/help"),KeyboardButton("status"), KeyboardButton("close keyboard"))
     return markup
+   
+
+def callback_register_data(message):
+    global usernamereal_current
+    usernamereal_current = message.text
+    msg = bot.send_message(message.chat.id, 'Введите Ваш номер телефона, по которому вам могут позвонить коллеги')
+    bot.register_next_step_handler(msg, callback_register_data_phone)
+
+def callback_register_data_phone(message):
+    global user_telephone
+    user_telephone = message.text
+    msg = bot.send_message(message.chat.id, 'Все верно?', reply_markup=register_markup_finish())
+
+#Надо редактировать  
 @bot.my_chat_member_handler()
 def my_chat_m(message: types.ChatMemberUpdated):
     old = message.old_chat_member
     new = message.new_chat_member
     if new.status == "member":
         bot.send_message(message.chat.id,"Кто хочет узнать статус ключа - поднимите руку :)") # Welcome message, if bot was added to group
-     #   bot.leave_chat(message.chat.id)
-
+        bot.leave_chat(message.chat.id)
 
 @bot.message_handler(commands=['help', 'start'])
 def send_welcome(message):
-    #bot.send_message(message.from_user.id,"",reply_markup=keyboard())
+    #print(usertelegram_id)
     bot.send_message(message.from_user.id, """\
-0-Ключ на ресепшене
-1-Ключ у %username% в офисе
-2-Ключ у %username% в ДЗ
-3-ДЗ закрыт на ключ и СКУД
-4-ДЗ закрыт на ключ, без СКУД
-5-ДЗ открыт
-6-Передал ключ %username%
+0-Ключ на ресепшене, ДЗ на охране
+1-Ключ на ресепшене, ДЗ не на охране. Установил %username% c %phone%
+2-ДЗ закрыт на ключ, ключ у %username_current% (contact: +7...)
+3-ДЗ открыт, ключ у %username_current% (contact: +7...)
+/register - изменить свое имя и номер телефона
 status- показать статус
     """,reply_markup=keyboard())
 
-@bot.message_handler(func=lambda message: True)
+@bot.message_handler(func=lambda message: True, content_types=['text'])
+#@bot.message_handler(func=lambda message: True)
 def echo_message(message):
+    global dbuser
     global status
-    global status_id
-    global status_user
-    global user_key
-    #status_id=message.from_user.first_name
-    #linked_user = '[@'+status_id+'](tg://user?id='+str(message.from_user.id)+')'    
-    #f'{linked_user}'
-    #print(f"id={message.from_user.id} user={message.from_user.first_name} status={status}")
+    global usertelegram_id
+    global user_telephone
+    global usertelegram_link
+    global username_current
+    global usernamereal_current
+    global registration_stat
+    if registration_stat == 1 and message.text == "Нет":
+        markup = telebot.types.ReplyKeyboardRemove()
+        msg=bot.send_message(message.chat.id, "Введите Ваше ФИО",reply_markup=markup)#, reply_markup=keyboardreg())
+        bot.register_next_step_handler(msg, callback_register_data)
+        return
+    if registration_stat == 1 and message.text == "Да":
+        registration_stat = 0
+
+        if user_telephone[0] == "8":
+           user_telephone='7' + user_telephone[1:]
+        if user_telephone[0] != "+":
+           user_telephone='+' + user_telephone[0:]
+
+        get = dbuser.execute('SELECT * FROM dmzusers WHERE id_telegramuser=?',(message.from_user.id,))
+        get = get.fetchone()
+        if get is not None:
+            dbuser.execute('UPDATE dmzusers SET realname=?,telephone=? WHERE id_telegramuser=?', (usernamereal_current, user_telephone, message.from_user.id))       
+        else:
+            dbuser.execute('INSERT INTO dmzusers (id_telegramuser,username, realname, telephone) VALUES (?, ?, ?, ?)', (message.from_user.id,message.from_user.first_name , usernamereal_current, user_telephone))
+        connection.commit() 
+        bot.send_message(message.from_user.id, "Регистрация прошла успешно",reply_markup=keyboard())
+        return
+
+
+    res = dbuser.execute('SELECT COUNT(id_telegramuser) FROM dmzusers WHERE id_telegramuser = ?',(message.from_user.id,))
+    if  res.fetchone()[0] == 0 or message.text == "/register":
+        registration_stat = 1
+        markup = telebot.types.ReplyKeyboardRemove()
+        msg=bot.send_message(message.chat.id, "Зарегистрироваться надо бы. Введите Ваше ФИО",reply_markup=markup)#, reply_markup=keyboardreg())
+        bot.register_next_step_handler(msg, callback_register_data)
+        return
+    #bot.send_message(message.chat.id, "Мне нужно узнать ваш номер телефон,чтобы другие могли бы вам позвонить", reply_markup=keycontact())
     if message.text == "close keyboard":
         markup = telebot.types.ReplyKeyboardRemove()
         bot.send_message(message.from_user.id,"Клавиатуру закрыл",reply_markup=markup)
     elif message.text == "/start" or message.text == "/help":
         bot.register_next_step_handler(message.text, send_welcome(message.text))
     elif message.text == "status":
-        status=int(conf.get("bot","status"))
+        res = dbuser.execute('SELECT * FROM dmzusers WHERE id_telegramuser=?',('dmzbot',))
+        res = res.fetchone()
+        status=res[4]
+        user_telephone=res[3]
+        usertelegram_id=res[2]
         if status == 0:
-            tmp_str=str(f"Ключ на ресепшене")
+            tmp_str=str(f"Ключ на ресепшене, ДЗ на охране")
             bot.send_message(message.chat.id, tmp_str)
         if status == 1:
-            tmp_str=str(f"Ключ у {status_user} в офисе")
+            tmp_str=str(f"Ключ на ресепшене, ДЗ не на охране\. Установил {usertelegram_link} ")
             bot.send_message(message.chat.id, f'{tmp_str}',parse_mode='MarkdownV2',disable_web_page_preview=True)
+            bot.send_message(message.chat.id, f'Его номер телефон: {user_telephone}')
         if status == 2:
-            tmp_str=str(f"Ключ у {status_user} в ДЗ")
+            tmp_str=str(f"ДЗ закрыт на ключ, ключ у {usertelegram_link} ")
             bot.send_message(message.chat.id, f'{tmp_str}',parse_mode='MarkdownV2',disable_web_page_preview=True)
-            #bot.send_message(message.chat.id, tmp_str)
+            bot.send_message(message.chat.id, f'Его номер телефон: {user_telephone}')
         if status == 3:
-            tmp_str=str(f"ДЗ закрыт на ключ и СКУД")
-            bot.send_message(message.chat.id, tmp_str)
-        if status == 4:
-            tmp_str=str(f"ДЗ закрыт на ключ, без СКУД")
-            bot.send_message(message.chat.id, tmp_str)
-        if status == 5:
-            tmp_str=str(f"ДЗ открыт")
-            bot.send_message(message.chat.id, tmp_str)
-        if status == 6:
-            tmp_str=str(f"Ключ передал {user_key}")
-            bot.send_message(message.chat.id, tmp_str)
-        if status == 99:
-            tmp_str=str(f"Ooops...Reset status")
-            bot.send_message(message.chat.id, tmp_str)
+            tmp_str=str(f"ДЗ открыт, ключ у {usertelegram_link} ")
+            bot.send_message(message.chat.id,f'{tmp_str}',parse_mode='MarkdownV2',disable_web_page_preview=True)
+            bot.send_message(message.chat.id, f'Его номер телефон: {user_telephone}')
     elif message.text == "0":
-        msg = bot.reply_to(message, "Ключ на ресепшене")
+        msg = bot.reply_to(message, "Ключ на ресепшене, ДЗ на охране")
         status=0
-        conf.set("bot", "status", "0")
-        with open("/root/telegrambot_DMZkeyroom/dmzbot.conf", "w") as config:
-            conf.write(config)
-        status_id=message.from_user.first_name
-        linked_user = '[@'+status_id+'](tg://user?id='+str(message.from_user.id)+')'
-        #bot.reply_to(message, status)
-        user_key=""
-        #bot.register_next_step_handler(msg, show_status)
+        get = dbuser.execute('SELECT * FROM dmzusers WHERE id_telegramuser=?',(message.from_user.id,))
+        get = get.fetchone()
+        if get is not None:
+            dbuser.execute('UPDATE dmzusers SET username=?,realname=?,telephone=?,status=? WHERE id_telegramuser="dmzbot"', (message.from_user.first_name,get[2],get[3] , status))
+        else:
+            dbuser.execute('UPDATE dmzusers SET username=?,status=? WHERE id_telegramuser="dmzbot"', (message.from_user.first_name , status))
+        connection.commit()
+        usertelegram_id=message.from_user.first_name
     elif message.text == "1":
-        msg = bot.reply_to(message, "Ключ у меня в офисе")
-        status_id=message.from_user.first_name
-        status_user = '[@'+status_id+'](tg://user?id='+str(message.from_user.id)+')'
+        msg = bot.reply_to(message, "Ключ на ресепшене, ДЗ не на охране")
         status=1
-        conf.set("bot", "status", "1")
-        conf.set("bot", "first_name", message.from_user.first_name)
-        #conf.set("bot", "user_id", message.from_user.id)
-        with open("/root/telegrambot_DMZkeyroom/dmzbot.conf", "w") as config:
-            conf.write(config)
-        user_key=""
-        #bot.register_next_step_handler(msg, show_status)
+        get = dbuser.execute('SELECT * FROM dmzusers WHERE id_telegramuser=?',(message.from_user.id,))
+        get = get.fetchone()
+        if get is not None:
+            usertelegram_id=get[2]
+            user_telephone = get[3]
+            usertelegram_link = '['+get[2]+'](tg://user?id='+str(message.from_user.id)+')'
+            dbuser.execute('UPDATE dmzusers SET username=?,realname=?,telephone=?,status=? WHERE id_telegramuser="dmzbot"', (message.from_user.first_name,get[2],get[3] , status))
+        else:
+            usertelegram_id=message.from_user.first_name
+            dbuser.execute('UPDATE dmzusers SET username=?,status=? WHERE id_telegramuser="dmzbot"', (message.from_user.first_name , status))
+        connection.commit()
     elif message.text == "2":
-        msg = bot.reply_to(message, "Ключ у меня в ДЗ")
-        status_id=message.from_user.first_name
-        status_user = '[@'+status_id+'](tg://user?id='+str(message.from_user.id)+')'
         status=2
-        
-        conf.set("bot", "status", "2")
-        conf.set("bot", "first_name", message.from_user.first_name)
-        #conf.set("bot", "user_id", message.from_user.id)
-        with open("/root/telegrambot_DMZkeyroom/dmzbot.conf", "w") as config:
-            conf.write(config)
-        
-        user_key=""
-        #bot.register_next_step_handler(msg, show_status)
-    elif message.text == "3":
-        msg = bot.reply_to(message, "ДЗ закрыт на ключ и СКУД")
-        #status_id=message.from_user.first_name
-        #status_user = '[@'+status_id+'](tg://user?id='+str(message.from_user.id)+')'
-        status=3
-        conf.set("bot", "status", "3")
-        with open("/root/telegrambot_DMZkeyroom/dmzbot.conf", "w") as config:
-            conf.write(config)
-        user_key=""
-        #bot.register_next_step_handler(msg, show_status)
-    elif message.text == "4":
-        msg = bot.reply_to(message, "ДЗ закрыт на ключ, без СКУД")
-        #status_id=message.from_user.first_name
-        #status_user = '[@'+status_id+'](tg://user?id='+str(message.from_user.id)+')'
-        status=4
-        conf.set("bot", "status", "4")
-        with open("/root/telegrambot_DMZkeyroom/dmzbot.conf", "w") as config:
-            conf.write(config)
-        user_key=""
-        #bot.register_next_step_handler(msg, show_status)
-    elif message.text == "5":
-        msg = bot.reply_to(message, "ДЗ открыт")
-        #status_id=message.from_user.first_name
-        #status_user = '[@'+status_id+'](tg://user?id='+str(message.from_user.id)+')'
-        status=5
-        conf.set("bot", "status", "5")
-        with open("/root/telegrambot_DMZkeyroom/dmzbot.conf", "w") as config:
-            conf.write(config)
-        #bot.register_next_step_handler(msg, show_status)
-        #msg = bot.reply_to(message, status)
-        user_key=""
-    elif message.text == "6":
-        status=6
-        bot.send_message(message.chat.id, 'Кому вы передали ключ?')
-        bot.register_next_step_handler(message, enter_user)
-        #msg = bot.reply_to(message, "Ключ передал "+str(user_key))
-
-   #     status_id=message.from_user.first_name
-   #     status_user = '[@'+status_id+'](tg://user?id='+str(message.from_user.id)+')'
+        get = dbuser.execute('SELECT * FROM dmzusers WHERE id_telegramuser=?',(message.from_user.id,))
+        get = get.fetchone()
         #
-    elif message.text == "DMZchat_id":
-        print(message.chat.id)
+        if get is not None:
+            usertelegram_id=get[2]
+            usertelegram_link = '['+get[2]+'](tg://user?id='+str(message.from_user.id)+')'
+        else:
+            usertelegram_id=message.from_user.first_name
+            usertelegram_link = '['+usertelegram_id+'](tg://user?id='+str(message.from_user.id)+')'
+        tmp_str=str(f"ДЗ закрыт на ключ, ключ у {usertelegram_link}")
+        bot.send_message(message.chat.id, f'{tmp_str}',parse_mode='MarkdownV2',disable_web_page_preview=True)
+        
+        if get is not None:
+            dbuser.execute('UPDATE dmzusers SET username=?,realname=?,telephone=?,status=? WHERE id_telegramuser="dmzbot"', (message.from_user.first_name,get[2],get[3] , status))
+        else:
+            dbuser.execute('UPDATE dmzusers SET username=?,status=? WHERE id_telegramuser="dmzbot"', (message.from_user.first_name , status))
+        connection.commit()
+    elif message.text == "3":
+        status=3
+        get = dbuser.execute('SELECT * FROM dmzusers WHERE id_telegramuser=?',(message.from_user.id,))
+        get = get.fetchone()
+        #
+        if get is not None:
+            usertelegram_id=get[2]
+            usertelegram_link = '['+get[2]+'](tg://user?id='+str(message.from_user.id)+')'
+        else:
+            usertelegram_id=message.from_user.first_name
+            usertelegram_link = '['+usertelegram_id+'](tg://user?id='+str(message.from_user.id)+')'
+        tmp_str=str(f" ДЗ открыт, ключ у {usertelegram_link}")
+        bot.send_message(message.chat.id, f'{tmp_str}',parse_mode='MarkdownV2',disable_web_page_preview=True)
+        get = dbuser.execute('SELECT * FROM dmzusers WHERE id_telegramuser=?',(message.from_user.id,))
+        get = get.fetchone()
+        if get is not None:
+            dbuser.execute('UPDATE dmzusers SET username=?,realname=?,telephone=?,status=? WHERE id_telegramuser="dmzbot"', (message.from_user.first_name,get[2],get[3] , status))
+        else:
+            dbuser.execute('UPDATE dmzusers SET username=?,status=? WHERE id_telegramuser="dmzbot"', (message.from_user.first_name , status))
+        connection.commit()
     else:
         msg = bot.reply_to(message, "Неверный статус")
     print(f"id={message.from_user.id} user={message.from_user.first_name} status={status}: {message.text}")
-    status_id=message.from_user.first_name
-    #print (status_id) 
+    usertelegram_id=message.from_user.first_name
+    #print (message.contact.phone_number) 
 
-@bot.message_handler(content_types=["text"])
-def enter_user(message):
-    #print(f" status={status}: {message.text}")
-    if status == 6:
-      global user_key
-      user_key=message.text 
-      if len(message.text) < 2 or message.text == "status" or message.text == "/help":
-          bot.send_message(message.chat.id, 'Кому вы передали ключ?')
-          bot.register_next_step_handler(message, enter_user)
-      else:
-          conf.set("bot", "status", "6")
-          conf.set("bot", "username", user_key)
-          with open("/root/telegrambot_DMZkeyroom/dmzbot.conf", "w") as config:
-            conf.write(config)
-          bot.send_message(message.chat.id, 'Запомнил.')
         
 #bot.polling(none_stop=True, interval=0)
 bot.infinity_polling(timeout=10, long_polling_timeout = 5)
+connection.commit()
+connection.close()
