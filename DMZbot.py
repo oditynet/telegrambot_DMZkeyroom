@@ -1,4 +1,4 @@
-#version: 0.6
+#version: 0.6.1
 #owner: odity
 import telebot
 #import configparser
@@ -38,10 +38,11 @@ else:
         usertelegram_id   = res[0]
         username_current  = res[1]
         usernamereal_current  = res[2]
+        usernamereal_current=usernamereal_current.replace("_", "\\_").replace("*", "\\*").replace("[", "\\[").replace("`", "\\`").replace("+", "\\+").replace("-", "\\-").replace(".", "\\.").replace(",", "\\,").replace("=", "\\=");
         usertelegram_link = '['+usernamereal_current+'](tg://user?id='+str(usertelegram_id)+')'
         print(usertelegram_link)
         user_telephone = res[3]
-
+        user_telephone=user_telephone.replace("_", "\\_").replace("*", "\\*").replace("[", "\\[").replace("`", "\\`").replace("+", "\\+").replace("-", "\\-").replace(".", "\\.").replace(",", "\\,").replace("=", "\\=")
 
 #telebot.logger.setLevel(7)
 keys = ["0","1","2","3"]
@@ -143,22 +144,26 @@ def echo_message(message):
         res = res.fetchone()
         status=res[4]
         user_telephone=res[3]
+        user_telephone=user_telephone.replace("_", "\\_").replace("*", "\\*").replace("[", "\\[").replace("`", "\\`").replace("+", "\\+").replace("-", "\\-").replace(".", "\\.").replace(",", "\\,").replace("=", "\\=");
         usertelegram_id=res[2]
+        usertelegram_id=usertelegram_id.replace("_", "\\_").replace("*", "\\*").replace("[", "\\[").replace("`", "\\`").replace("+", "\\+").replace("-", "\\-").replace(".", "\\.").replace(",", "\\,").replace("=", "\\=");
         if status == 0:
             tmp_str=str(f"Ключ на ресепшене, ДЗ на охране")
             bot.send_message(message.chat.id, tmp_str)
         if status == 1:
-            tmp_str=str(f"Ключ на ресепшене, ДЗ не на охране\. Установил {usertelegram_link} ")
-            bot.send_message(message.chat.id, f'{tmp_str}',parse_mode='MarkdownV2',disable_web_page_preview=True)
-            bot.send_message(message.chat.id, f'Его номер телефон: {user_telephone}')
+            print(usertelegram_link)
+            tmp_str=str(f"Ключ на ресепшене, ДЗ не на охране\\. Установил {usertelegram_link} с  номером телефона: {user_telephone}")
+            bot.send_message(message.chat.id, f"{tmp_str}",parse_mode='MarkdownV2',disable_web_page_preview=True)
+            print("2")
+            #bot.send_message(message.chat.id, f'Его номер телефон: {user_telephone}')
         if status == 2:
             tmp_str=str(f"ДЗ закрыт на ключ, ключ у {usertelegram_link} ")
-            bot.send_message(message.chat.id, f'{tmp_str}',parse_mode='MarkdownV2',disable_web_page_preview=True)
-            bot.send_message(message.chat.id, f'Его номер телефон: {user_telephone}')
+            bot.send_message(message.chat.id, f'{tmp_str}\\. Его номер телефон: {user_telephone}',parse_mode='MarkdownV2',disable_web_page_preview=True)
+            #bot.send_message(message.chat.id, f'Его номер телефон: {user_telephone}')
         if status == 3:
             tmp_str=str(f"ДЗ открыт, ключ у {usertelegram_link} ")
-            bot.send_message(message.chat.id,f'{tmp_str}',parse_mode='MarkdownV2',disable_web_page_preview=True)
-            bot.send_message(message.chat.id, f'Его номер телефон: {user_telephone}')
+            bot.send_message(message.chat.id,f'{tmp_str}\\. Его номер телефон: {user_telephone}',parse_mode='MarkdownV2',disable_web_page_preview=True)
+            #bot.send_message(message.chat.id, f'Его номер телефон: {user_telephone}')
     elif message.text == "0":
         msg = bot.reply_to(message, "Ключ на ресепшене, ДЗ на охране")
         status=0
@@ -177,8 +182,11 @@ def echo_message(message):
         get = get.fetchone()
         if get is not None:
             usertelegram_id=get[2]
+            #print(usertelegram_id)
+            usertelegram_id=usertelegram_id.replace("_", "\\_").replace("*", "\\*").replace("[", "\\[").replace("`", "\\`").replace("+", "\\+").replace("-", "\\-").replace(".", "\\.").replace(",", "\\,").replace("=", "\\=");
             user_telephone = get[3]
-            usertelegram_link = '['+get[2]+'](tg://user?id='+str(message.from_user.id)+')'
+            user_telephone=user_telephone.replace("_", "\\_").replace("*", "\\*").replace("[", "\\[").replace("`", "\\`").replace("+", "\\+").replace("-", "\\-").replace(".", "\\.").replace(",", "\\,").replace("=", "\\=");
+            usertelegram_link = '['+usertelegram_id+'](tg://user?id='+str(message.from_user.id)+')'
             dbuser.execute('UPDATE dmzusers SET username=?,realname=?,telephone=?,status=? WHERE id_telegramuser="dmzbot"', (message.from_user.first_name,get[2],get[3] , status))
         else:
             usertelegram_id=message.from_user.first_name
@@ -191,9 +199,11 @@ def echo_message(message):
         #
         if get is not None:
             usertelegram_id=get[2]
-            usertelegram_link = '['+get[2]+'](tg://user?id='+str(message.from_user.id)+')'
+            usertelegram_id=usertelegram_id.replace("_", "\\_").replace("*", "\\*").replace("[", "\\[").replace("`", "\\`").replace("+", "\\+").replace("-", "\\-").replace(".", "\\.").replace(",", "\\,").replace("=", "\\=");
+            usertelegram_link = '['+usertelegram_id+'](tg://user?id='+str(message.from_user.id)+')'
         else:
             usertelegram_id=message.from_user.first_name
+            usertelegram_id=usertelegram_id.replace("_", "\\_").replace("*", "\\*").replace("[", "\\[").replace("`", "\\`").replace("+", "\\+").replace("-", "\\-").replace(".", "\\.").replace(",", "\\,").replace("=", "\\=");
             usertelegram_link = '['+usertelegram_id+'](tg://user?id='+str(message.from_user.id)+')'
         tmp_str=str(f"ДЗ закрыт на ключ, ключ у {usertelegram_link}")
         bot.send_message(message.chat.id, f'{tmp_str}',parse_mode='MarkdownV2',disable_web_page_preview=True)
@@ -210,9 +220,11 @@ def echo_message(message):
         #
         if get is not None:
             usertelegram_id=get[2]
-            usertelegram_link = '['+get[2]+'](tg://user?id='+str(message.from_user.id)+')'
+            usertelegram_id=usertelegram_id.replace("_", "\\_").replace("*", "\\*").replace("[", "\\[").replace("`", "\\`").replace("+", "\\+").replace("-", "\\-").replace(".", "\\.").replace(",", "\\,").replace("=", "\\=");
+            usertelegram_link = '['+usertelegram_id+'](tg://user?id='+str(message.from_user.id)+')'
         else:
             usertelegram_id=message.from_user.first_name
+            usertelegram_id=usertelegram_id.replace("_", "\\_").replace("*", "\\*").replace("[", "\\[").replace("`", "\\`").replace("+", "\\+").replace("-", "\\-").replace(".", "\\.").replace(",", "\\,").replace("=", "\\=");
             usertelegram_link = '['+usertelegram_id+'](tg://user?id='+str(message.from_user.id)+')'
         tmp_str=str(f" ДЗ открыт, ключ у {usertelegram_link}")
         bot.send_message(message.chat.id, f'{tmp_str}',parse_mode='MarkdownV2',disable_web_page_preview=True)
