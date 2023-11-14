@@ -1,21 +1,21 @@
-#version: 0.6.1
+#version: 0.6.2
 #owner: odity
 import telebot
-#import configparser
+from datetime import datetime
 from telebot import types,util
-#from telebot.types import InlineKeyboardButton, InlineKeyboardMarkup,Update
 from telebot.types import ReplyKeyboardMarkup, KeyboardButton
 import sqlite3
 
-connection = sqlite3.connect('dmzbase.db',check_same_thread=False)
+connection = sqlite3.connect('/root/telegrambot_DMZkeyroom/dmzbase.db',check_same_thread=False)
 dbuser = connection.cursor()
 dbuser.execute('''
 CREATE TABLE IF NOT EXISTS dmzusers (
-id_telegramuser TEXT PRIMARY KEY, 
+id_telegramuser TEXT PRIMARY KEY,
 username TEXT,
 realname TEXT,               
 telephone TEXT,
-status INTEGER
+status INTEGER,
+datechange timestamp
 )
 ''')
 
@@ -26,24 +26,26 @@ user_telephone=""
 usertelegram_link=""
 username_current=""
 usernamereal_current=""
+now=""
 
 bot = telebot.TeleBot('TOKEN');
 res = dbuser.execute('SELECT * FROM dmzusers WHERE id_telegramuser=?',('dmzbot',))
 res = res.fetchone()
+
 if res is None:
-    dbuser.execute('INSERT INTO dmzusers (id_telegramuser, username, realname ,telephone, status) VALUES (?, ?, ?, ?, ?)', ('dmzbot', '','','', 0))
+    dbuser.execute('INSERT INTO dmzusers (id_telegramuser, username, realname ,telephone, status,datechange) VALUES (?, ?, ?, ?, ?)', ('dmzbot', '','','', 0,''))
 else:
     status=res[4]
     if  status == 1 or status == 2 or status == 3:
         usertelegram_id   = res[0]
         username_current  = res[1]
         usernamereal_current  = res[2]
+        now=res[5]
         usernamereal_current=usernamereal_current.replace("_", "\\_").replace("*", "\\*").replace("[", "\\[").replace("`", "\\`").replace("+", "\\+").replace("-", "\\-").replace(".", "\\.").replace(",", "\\,").replace("=", "\\=");
         usertelegram_link = '['+usernamereal_current+'](tg://user?id='+str(usertelegram_id)+')'
         print(usertelegram_link)
         user_telephone = res[3]
         user_telephone=user_telephone.replace("_", "\\_").replace("*", "\\*").replace("[", "\\[").replace("`", "\\`").replace("+", "\\+").replace("-", "\\-").replace(".", "\\.").replace(",", "\\,").replace("=", "\\=")
-
 #telebot.logger.setLevel(7)
 keys = ["0","1","2","3"]
 
@@ -84,9 +86,9 @@ def send_welcome(message):
     #print(usertelegram_id)
     bot.send_message(message.from_user.id, """\
 0-Ключ на ресепшене, ДЗ на охране
-1-Ключ на ресепшене, ДЗ не на охране. Установил %username% c %phone%
-2-ДЗ закрыт на ключ, ключ у %username_current% (contact: +7...)
-3-ДЗ открыт, ключ у %username_current% (contact: +7...)
+1-Ключ на ресепшене, ДЗ не на охране. Установил %username% c %phone% в %date%
+2-ДЗ закрыт на ключ, ключ у %username_current% c %date% (contact: +7...) 
+3-ДЗ открыт, ключ у %username_current%  c %date% (contact: +7...)
 /register - изменить свое имя и номер телефона
 status- показать статус
     """,reply_markup=keyboard())
@@ -102,6 +104,7 @@ def echo_message(message):
     global username_current
     global usernamereal_current
     global registration_stat
+    global now
     if registration_stat == 1 and message.text == "Нет":
         markup = telebot.types.ReplyKeyboardRemove()
         msg=bot.send_message(message.chat.id, "Введите Ваше ФИО",reply_markup=markup)#, reply_markup=keyboardreg())
@@ -143,6 +146,7 @@ def echo_message(message):
         res = dbuser.execute('SELECT * FROM dmzusers WHERE id_telegramuser=?',('dmzbot',))
         res = res.fetchone()
         status=res[4]
+        now=res[5]
         user_telephone=res[3]
         user_telephone=user_telephone.replace("_", "\\_").replace("*", "\\*").replace("[", "\\[").replace("`", "\\`").replace("+", "\\+").replace("-", "\\-").replace(".", "\\.").replace(",", "\\,").replace("=", "\\=");
         usertelegram_id=res[2]
@@ -152,17 +156,17 @@ def echo_message(message):
             bot.send_message(message.chat.id, tmp_str)
         if status == 1:
             print(usertelegram_link)
-            tmp_str=str(f"Ключ на ресепшене, ДЗ не на охране\\. Установил {usertelegram_link} с  номером телефона: {user_telephone}")
+            tmp_str=str(f"Ключ на ресепшене, ДЗ не на охране\\. Установил {usertelegram_link} с телефона: {user_telephone} в *{now}*")
             bot.send_message(message.chat.id, f"{tmp_str}",parse_mode='MarkdownV2',disable_web_page_preview=True)
             print("2")
             #bot.send_message(message.chat.id, f'Его номер телефон: {user_telephone}')
         if status == 2:
             tmp_str=str(f"ДЗ закрыт на ключ, ключ у {usertelegram_link} ")
-            bot.send_message(message.chat.id, f'{tmp_str}\\. Его номер телефон: {user_telephone}',parse_mode='MarkdownV2',disable_web_page_preview=True)
+            bot.send_message(message.chat.id, f'{tmp_str} c *{now}*\\. Его телефон: {user_telephone}',parse_mode='MarkdownV2',disable_web_page_preview=True)
             #bot.send_message(message.chat.id, f'Его номер телефон: {user_telephone}')
         if status == 3:
             tmp_str=str(f"ДЗ открыт, ключ у {usertelegram_link} ")
-            bot.send_message(message.chat.id,f'{tmp_str}\\. Его номер телефон: {user_telephone}',parse_mode='MarkdownV2',disable_web_page_preview=True)
+            bot.send_message(message.chat.id,f'{tmp_str} c *{now}*\\. Его телефон: {user_telephone}',parse_mode='MarkdownV2',disable_web_page_preview=True)
             #bot.send_message(message.chat.id, f'Его номер телефон: {user_telephone}')
     elif message.text == "0":
         msg = bot.reply_to(message, "Ключ на ресепшене, ДЗ на охране")
@@ -178,25 +182,29 @@ def echo_message(message):
     elif message.text == "1":
         msg = bot.reply_to(message, "Ключ на ресепшене, ДЗ не на охране")
         status=1
+        now = datetime.now()
+        now = now.strftime("%H:%M:%S %d/%m/%Y")
+        print(now)
         get = dbuser.execute('SELECT * FROM dmzusers WHERE id_telegramuser=?',(message.from_user.id,))
         get = get.fetchone()
         if get is not None:
             usertelegram_id=get[2]
-            #print(usertelegram_id)
             usertelegram_id=usertelegram_id.replace("_", "\\_").replace("*", "\\*").replace("[", "\\[").replace("`", "\\`").replace("+", "\\+").replace("-", "\\-").replace(".", "\\.").replace(",", "\\,").replace("=", "\\=");
             user_telephone = get[3]
             user_telephone=user_telephone.replace("_", "\\_").replace("*", "\\*").replace("[", "\\[").replace("`", "\\`").replace("+", "\\+").replace("-", "\\-").replace(".", "\\.").replace(",", "\\,").replace("=", "\\=");
             usertelegram_link = '['+usertelegram_id+'](tg://user?id='+str(message.from_user.id)+')'
-            dbuser.execute('UPDATE dmzusers SET username=?,realname=?,telephone=?,status=? WHERE id_telegramuser="dmzbot"', (message.from_user.first_name,get[2],get[3] , status))
+            dbuser.execute('UPDATE dmzusers SET username=?,realname=?,telephone=?,status=?,datechange=? WHERE id_telegramuser="dmzbot"', (message.from_user.first_name,get[2],get[3] , status, now))
         else:
             usertelegram_id=message.from_user.first_name
-            dbuser.execute('UPDATE dmzusers SET username=?,status=? WHERE id_telegramuser="dmzbot"', (message.from_user.first_name , status))
+            dbuser.execute('UPDATE dmzusers SET username=?,status=?,datechange=? WHERE id_telegramuser="dmzbot"', (message.from_user.first_name , status,now))
         connection.commit()
     elif message.text == "2":
         status=2
         get = dbuser.execute('SELECT * FROM dmzusers WHERE id_telegramuser=?',(message.from_user.id,))
         get = get.fetchone()
-        #
+        now = datetime.now()
+        now = now.strftime("%H:%M:%S %d/%m/%Y")
+        print(now)
         if get is not None:
             usertelegram_id=get[2]
             usertelegram_id=usertelegram_id.replace("_", "\\_").replace("*", "\\*").replace("[", "\\[").replace("`", "\\`").replace("+", "\\+").replace("-", "\\-").replace(".", "\\.").replace(",", "\\,").replace("=", "\\=");
@@ -209,15 +217,17 @@ def echo_message(message):
         bot.send_message(message.chat.id, f'{tmp_str}',parse_mode='MarkdownV2',disable_web_page_preview=True)
         
         if get is not None:
-            dbuser.execute('UPDATE dmzusers SET username=?,realname=?,telephone=?,status=? WHERE id_telegramuser="dmzbot"', (message.from_user.first_name,get[2],get[3] , status))
+            dbuser.execute('UPDATE dmzusers SET username=?,realname=?,telephone=?,status=?,datechange=? WHERE id_telegramuser="dmzbot"', (message.from_user.first_name,get[2],get[3] , status,now))
         else:
-            dbuser.execute('UPDATE dmzusers SET username=?,status=? WHERE id_telegramuser="dmzbot"', (message.from_user.first_name , status))
+            dbuser.execute('UPDATE dmzusers SET username=?,status=?,datechange=? WHERE id_telegramuser="dmzbot"', (message.from_user.first_name , status,now))
         connection.commit()
     elif message.text == "3":
         status=3
         get = dbuser.execute('SELECT * FROM dmzusers WHERE id_telegramuser=?',(message.from_user.id,))
         get = get.fetchone()
-        #
+        now = datetime.now()
+        now = now.strftime("%H:%M:%S %d/%m/%Y")
+        print(now)
         if get is not None:
             usertelegram_id=get[2]
             usertelegram_id=usertelegram_id.replace("_", "\\_").replace("*", "\\*").replace("[", "\\[").replace("`", "\\`").replace("+", "\\+").replace("-", "\\-").replace(".", "\\.").replace(",", "\\,").replace("=", "\\=");
@@ -231,9 +241,9 @@ def echo_message(message):
         get = dbuser.execute('SELECT * FROM dmzusers WHERE id_telegramuser=?',(message.from_user.id,))
         get = get.fetchone()
         if get is not None:
-            dbuser.execute('UPDATE dmzusers SET username=?,realname=?,telephone=?,status=? WHERE id_telegramuser="dmzbot"', (message.from_user.first_name,get[2],get[3] , status))
+            dbuser.execute('UPDATE dmzusers SET username=?,realname=?,telephone=?,status=?,datechange=? WHERE id_telegramuser="dmzbot"', (message.from_user.first_name,get[2],get[3] , status,now))
         else:
-            dbuser.execute('UPDATE dmzusers SET username=?,status=? WHERE id_telegramuser="dmzbot"', (message.from_user.first_name , status))
+            dbuser.execute('UPDATE dmzusers SET username=?,status=?,datechange=? WHERE id_telegramuser="dmzbot"', (message.from_user.first_name , status,now))
         connection.commit()
     else:
         msg = bot.reply_to(message, "Неверный статус")
