@@ -9,4 +9,4 @@ and copy:
 cp dmsbot@.service /etc/systemd/user/
 systemctl daemon-reload --user
 ```
-<img src="https://github.com/oditynet/telegrambot_DMZkeyroom/bot.png" title="withwords" width="500" />
+<img src="https://github.com/oditynet/telegrambot_DMZkeyroom/blob/main/bot.png" title="withwords" width="500" />
