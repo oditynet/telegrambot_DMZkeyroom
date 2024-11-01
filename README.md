@@ -14,4 +14,4 @@ systemctl daemon-reload --user
 
 News in 0.6.3.0:
  - Operation history support
- - Anti-code injection support%     
+ - Anti-code injection support
