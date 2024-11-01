@@ -1,4 +1,4 @@
-#version: 0.6.3.0
+#version: 0.6.3.1
 #owner: odity
 import telebot
 from datetime import datetime
@@ -6,6 +6,8 @@ from telebot import types,util
 from telebot.types import ReplyKeyboardMarkup, KeyboardButton
 import sqlite3
 import re
+import threading
+import time
 
 connection = sqlite3.connect('dmzbase.db',check_same_thread=False)
 dbuser = connection.cursor()
@@ -30,6 +32,22 @@ usernamereal_current=""
 now=""
 history_key=[]
 history_max=8
+history_file="dmzbot_history.log"
+def save_history(filename,hist):
+    while(True):
+        time.sleep(60*5)
+        print("save...")
+        with open(filename, 'w') as f:
+         for line in hist:
+            f.write(f"{line}\n")
+
+with open(history_file, 'r') as f:
+    data = f.read()
+for i in data.splitlines():
+    print(i)
+    history_key.append(i)
+x = threading.Thread(target=save_history, args=(history_file,history_key))
+x.start()
 
 bot = telebot.TeleBot('TOKEN-KEY');
 res = dbuser.execute('SELECT * FROM dmzusers WHERE id_telegramuser=?',('dmzbot',))
